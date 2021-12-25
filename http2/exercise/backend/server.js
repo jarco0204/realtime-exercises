@@ -2,7 +2,7 @@ import http2 from "http2";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import handler from "serve-handler";
+import handler from "serve-handler"; //Middleware
 import nanobuffer from "nanobuffer";
 
 let connections = [];
@@ -35,6 +35,27 @@ const server = http2.createSecureServer({
  *
  */
 
+server.on("stream", (stream, headers) => {
+  const path = headers[":path"];
+  const method = headers[":method"];
+
+  // Streams open for every request from the browser
+  if (path === "/msgs" && method === "GET") {
+    // Immediately reply with 200 ok and the encoding
+    console.log("Connected a stream ", stream.id);
+    stream.respond({
+      ":status": 200,
+      "content-type": "text/plain; charset=utf-8",
+    });
+
+    // Write the first response
+    stream.write(JSON.stringify({ msg: getMsgs() }));
+    stream.on("close", () => {
+      console.log("disconnected " + stream.id);
+    });
+  }
+});
+
 server.on("request", async (req, res) => {
   const path = req.headers[":path"];
   const method = req.headers[":method"];
@@ -45,6 +66,7 @@ server.on("request", async (req, res) => {
       public: "./frontend",
     });
   } else if (method === "POST") {
+    // Body.parse in express
     // get data out of post
     const buffers = [];
     for await (const chunk of req) {
