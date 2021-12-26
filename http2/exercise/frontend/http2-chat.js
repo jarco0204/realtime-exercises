@@ -32,11 +32,40 @@ async function postNewMsg(user, text) {
 }
 
 async function getNewMsgs() {
-  /*
-   *
-   * code goes here
-   *
-   */
+  let reader;
+  const utf8Decoder = new TextDecoder("utf-8");
+  try {
+    const res = await fetch("/msgs");
+    reader = res.body.getReader(); // Stream of data coming in
+  } catch (e) {
+    console.log("connection error", e);
+  }
+
+  presence.innerText = "Connected"; // Let them know they are connected
+
+  let readerResponse;
+  let done;
+  do {
+    try {
+      readerResponse = await reader.read(); // Wait until IP send me something back
+      console.log(chunk);
+    } catch (e) {
+      console.error("reader faile", e);
+      presence.innerText = "Disconnected";
+    }
+    const chunk = utf8Decoder.decode(readerResponse.value, { stream: true });
+    done = readerResponse.done;
+
+    if (chunk) {
+      try {
+        const json = JSON.parse(chunk);
+        allChat = json.msg;
+        render();
+      } catch (e) {
+        console.error("error", e);
+      }
+    }
+  } while (!done);
 }
 
 function render() {
